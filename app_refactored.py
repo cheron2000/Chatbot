@@ -1,0 +1,74 @@
+"""
+ORACLE AI Chat Application - Refactored Version
+
+A Flask-based AI chatbot with AWS Bedrock integration, featuring:
+- Dual memory system (short-term + long-term)
+- Model fallback (Claude + NVIDIA)
+- Real-time streaming responses
+- Token analytics
+"""
+from flask import Flask
+from flask_session import Session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import os
+
+from config import config
+from services.bedrock import BedrockService
+from services.streaming import StreamingService
+from routes.main import main_bp
+from routes.chat import create_chat_blueprint
+
+
+def create_app():
+    """Application factory pattern."""
+    app = Flask(__name__)
+    
+    # ── Session config (server-side filesystem sessions) ──
+    app.config["SECRET_KEY"] = config.secret_key
+    app.config["SESSION_TYPE"] = config.session_type
+    app.config["SESSION_FILE_DIR"] = os.path.join(
+        os.path.dirname(__file__), 
+        config.session_file_dir
+    )
+    app.config["SESSION_PERMANENT"] = config.session_permanent
+    Session(app)
+    
+    # ── Rate limiter (in-memory, per IP) ──
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=[config.rate_limit.default_limit],
+        storage_uri="memory://"
+    )
+    
+    # ── Initialize services ──
+    bedrock_service = BedrockService(config.bedrock)
+    streaming_service = StreamingService(
+        bedrock_service,
+        config.bedrock.models,
+        config.max_tokens
+    )
+    
+    # ── Register blueprints ──
+    app.register_blueprint(main_bp)
+    
+    chat_bp = create_chat_blueprint(
+        streaming_service=streaming_service,
+        bedrock_client=bedrock_service.client,
+        memory_config=config.memory,
+        max_message_length=config.max_message_length,
+        max_short_term=config.memory.max_short_term,
+        limiter=limiter,
+        chat_limit=config.rate_limit.chat_limit
+    )
+
+    app.register_blueprint(chat_bp)
+    
+    return app
+
+
+if __name__ == "__main__":
+    app = create_app()
+    # Threaded=True is important for SSE to work correctly
+    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
