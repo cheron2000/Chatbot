@@ -50,6 +50,13 @@ def create_app():
         config.max_tokens
     )
     
+    # ── Initialize vector memory ──
+    vector_memory = None
+    if config.memory.enable_vector_memory:
+        from models.vector_memory import VectorMemory
+        vector_memory = VectorMemory(persist_directory=config.memory.vector_db_dir)
+        print(f"[VECTOR] Initialized vector memory at {config.memory.vector_db_dir}")
+    
     # ── Register blueprints ──
     app.register_blueprint(main_bp)
     
@@ -59,8 +66,12 @@ def create_app():
         memory_config=config.memory,
         max_message_length=config.max_message_length,
         max_short_term=config.memory.max_short_term,
+        vector_memory=vector_memory,
         limiter=limiter,
-        chat_limit=config.rate_limit.chat_limit
+        chat_limit=config.rate_limit.chat_limit,
+        enable_prompt_enhancement=config.enable_prompt_enhancement,
+        enable_infiltration_mode=config.enable_infiltration_mode,
+        infiltration_auto_block=config.infiltration_auto_block
     )
 
     app.register_blueprint(chat_bp)

@@ -48,5 +48,8 @@ Thumbs.db
 # Memory files (session-specific data)
 memory/*.json
 
+# Vector database
+vector_db/
+
 # Logs
 *.log

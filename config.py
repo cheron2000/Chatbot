@@ -24,6 +24,9 @@ class MemoryConfig:
     max_summary_tokens: int = 200
     summary_model: str = "anthropic.claude-3-haiku-20240307-v1:0"
     memory_dir: str = "memory"
+    vector_db_dir: str = "vector_db"
+    enable_vector_memory: bool = True
+    vector_search_results: int = 3
 
 
 @dataclass
@@ -42,6 +45,12 @@ class AppConfig:
     session_permanent: bool = False
     max_message_length: int = 4000
     max_tokens: int = 4096
+    enable_prompt_enhancement: bool = True  # Enable automatic prompt improvement
+    
+    # Infiltration Mode Settings
+    enable_infiltration_mode: bool = True  # Allow users to enable infiltration mode
+    infiltration_auto_block: bool = False  # Auto-block detected attacks (False = log only)
+    infiltration_log_file: str = "infiltration_log.json"  # Log file for detected attacks
     
     bedrock: BedrockConfig = field(default_factory=BedrockConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)

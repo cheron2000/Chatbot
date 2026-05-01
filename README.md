@@ -4,13 +4,13 @@ A Flask-based AI chatbot with AWS Bedrock integration, featuring dual memory sys
 
 ## Features
 
-- 🤖 **Multi-Model Support**: Claude 3 Haiku + NVIDIA Nemotron with automatic fallback
-- 🧠 **Dual Memory System**: Short-term (10 messages) + long-term (AI-generated summaries)
-- ⚡ **Real-time Streaming**: Server-sent events for token-by-token responses
-- 📊 **Token Analytics**: Track input/output tokens per message and session
-- 🎨 **Beautiful UI**: Space-themed interface with animated background
-- 🔒 **Rate Limiting**: 200 requests/day, 20/minute per IP
-- 📱 **Responsive Design**: Works on desktop and mobile
+-  **Multi-Model Support**: Claude 3 Haiku + NVIDIA Nemotron with automatic fallback
+-  **Dual Memory System**: Short-term (10 messages) + long-term (AI-generated summaries)
+-  **Real-time Streaming**: Server-sent events for token-by-token responses
+-  **Token Analytics**: Track input/output tokens per message and session
+-  **Beautiful UI**: Space-themed interface with animated background
+-  **Rate Limiting**: 200 requests/day, 20/minute per IP
+-  **Responsive Design**: Works on desktop and mobile
 
 ## Quick Start
 
