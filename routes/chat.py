@@ -60,7 +60,8 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
                          limiter=None, chat_limit: str = "20 per minute",
                          enable_prompt_enhancement: bool = True,
                          enable_infiltration_mode: bool = True,
-                         infiltration_auto_block: bool = False):
+                         infiltration_auto_block: bool = False,
+                         enable_developer_mode: bool = False):
     """
     Create and configure the chat blueprint.
 
@@ -76,6 +77,7 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
         enable_prompt_enhancement: Enable automatic prompt improvement
         enable_infiltration_mode: Enable infiltration mode for security testing
         infiltration_auto_block: Auto-block detected attacks
+        enable_developer_mode: Enable developer mode for code editing (DISABLED by default)
 
     Returns:
         Configured Flask blueprint
@@ -100,13 +102,14 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
         if error:
             return jsonify(error[0]), error[1]
 
-        # Check if developer mode is enabled
-        developer_mode = session.get("developer_mode", False)
+        # Check if developer mode is enabled (DISABLED FOR NOW)
+        developer_mode = False  # Hardcoded to False - feature disabled
         
         # Only detect editor requests if developer mode is enabled
         is_editor_request = False
-        if developer_mode:
-            is_editor_request = any(t in user_message.lower() for t in EDITOR_TRIGGERS)
+        # Developer mode disabled - no code editing allowed
+        # if developer_mode:
+        #     is_editor_request = any(t in user_message.lower() for t in EDITOR_TRIGGERS)
         
         # Check infiltration mode
         infiltration_mode = session.get("infiltration_mode", False)
@@ -287,17 +290,25 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
         if vector_context:
             combined_context = f"{long_term_summary}\n\n{vector_context}" if long_term_summary else vector_context
         
-        # IMPORTANT: Web search results should be prioritized and explicitly marked
+        # CRITICAL: Web search results MUST take absolute priority
         if web_context:
             web_instruction = (
-                "\n\n⚠️ CRITICAL: The user has enabled web search. "
-                "You MUST use the following CURRENT web search results to answer the question. "
-                "These results contain the most up-to-date information from the internet. "
-                "DO NOT rely on your training data for facts that can be found in these search results. "
-                "Always cite the sources provided in the search results.\n\n"
+                "\n\n" + "="*70 + "\n"
+                "🚨 CRITICAL INSTRUCTION - WEB SEARCH MODE ACTIVATED 🚨\n"
+                "="*70 + "\n"
+                "The user has explicitly requested current, real-time information.\n"
+                "YOU MUST FOLLOW THESE RULES STRICTLY:\n\n"
+                "1. ✅ USE ONLY the web search results below for factual information\n"
+                "2. ❌ DO NOT use your training data for any facts covered in the search results\n"
+                "3. ✅ CITE the source URLs from the search results in your response\n"
+                "4. ✅ If the search results say 'as of [date]', include that date in your answer\n"
+                "5. ✅ If search results conflict with your training data, TRUST THE SEARCH RESULTS\n"
+                "6. ❌ DO NOT say 'I don't have current information' - you DO have it below\n"
+                "7. ✅ Answer with confidence using ONLY the information from these search results\n\n"
+                "="*70 + "\n\n"
             )
             combined_context = f"{combined_context}{web_instruction}{web_context}" if combined_context else f"{web_instruction}{web_context}"
-            print(f"[SEARCH] Injecting web context ({len(web_context)} chars) with priority instructions")
+            print(f"[SEARCH] ✅ Injecting web context ({len(web_context)} chars) with CRITICAL priority instructions")
         
         if file_context:
             combined_context = f"{combined_context}\n\n{file_context}" if combined_context else file_context
@@ -434,24 +445,20 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
     
     @chat_bp.route("/developer/toggle", methods=["POST"])
     def toggle_developer():
-        """Toggle developer mode (code editing) on/off."""
-        current = session.get("developer_mode", False)
-        session["developer_mode"] = not current
-        
-        status = "enabled" if session["developer_mode"] else "disabled"
-        print(f"[DEVELOPER] Mode {status}")
-        
+        """Toggle developer mode (code editing) on/off - DISABLED."""
         return jsonify({
-            "developer_mode": session["developer_mode"],
-            "status": status
-        })
+            "error": "Developer mode is currently disabled",
+            "developer_mode": False,
+            "available": False
+        }), 403
     
     @chat_bp.route("/developer/status", methods=["GET"])
     def developer_status():
-        """Get current developer mode status."""
+        """Get current developer mode status - DISABLED."""
         return jsonify({
-            "enabled": session.get("developer_mode", False),
-            "available": True
+            "enabled": False,
+            "available": False,
+            "message": "Developer mode is currently disabled"
         })
     
     @chat_bp.route("/infiltration/test", methods=["POST"])

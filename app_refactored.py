@@ -85,11 +85,13 @@ def create_app():
         chat_limit=config.rate_limit.chat_limit,
         enable_prompt_enhancement=config.enable_prompt_enhancement,
         enable_infiltration_mode=config.enable_infiltration_mode,
-        infiltration_auto_block=config.infiltration_auto_block
+        infiltration_auto_block=config.infiltration_auto_block,
+        enable_developer_mode=False  # DISABLED: Developer mode turned off
     )
 
     app.register_blueprint(chat_bp)
-    app.register_blueprint(editor_bp)
+    # Editor blueprint disabled along with developer mode
+    # app.register_blueprint(editor_bp)
     
     return app
 

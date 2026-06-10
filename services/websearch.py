@@ -5,13 +5,13 @@ import time
 from typing import Optional
 
 
-def web_search(query: str, max_results: int = 3, max_retries: int = 2) -> str:
+def web_search(query: str, max_results: int = 5, max_retries: int = 2) -> str:
     """
     Perform web search using Serper.dev API and return formatted results.
     
     Args:
         query: Search query string
-        max_results: Maximum number of results to return
+        max_results: Maximum number of results to return (increased to 5 for better coverage)
         max_retries: Maximum number of retry attempts
         
     Returns:
@@ -36,7 +36,9 @@ def web_search(query: str, max_results: int = 3, max_retries: int = 2) -> str:
             }
             payload = {
                 "q": query,
-                "num": max_results
+                "num": max_results,
+                "gl": "us",  # Geographic location
+                "hl": "en"   # Language
             }
             
             # Use longer timeout and enable keep-alive
@@ -74,20 +76,35 @@ def web_search(query: str, max_results: int = 3, max_retries: int = 2) -> str:
                     print(f"[SEARCH] No results found for: {query}")
                     return ""
                 
-                # Format results with title, snippet, and link
-                formatted = "[Web Search Results]\n\n"
+                # Format results with enhanced structure
+                formatted = "═══════════════════════════════════════════════════════\n"
+                formatted += "🌐 LIVE WEB SEARCH RESULTS (CURRENT INFORMATION)\n"
+                formatted += "═══════════════════════════════════════════════════════\n"
+                formatted += f"Query: {query}\n"
+                formatted += f"Results: {len(organic)} sources found\n"
+                formatted += "═══════════════════════════════════════════════════════\n\n"
+                
                 for i, result in enumerate(organic[:max_results], 1):
                     title = result.get("title", "No title")
                     snippet = result.get("snippet", "No description")
                     link = result.get("link", "")
+                    date = result.get("date", "")
                     
-                    formatted += f"{i}. {title}\n"
-                    formatted += f"   {snippet}\n"
-                    if link:
-                        formatted += f"   Source: {link}\n"
-                    formatted += "\n"
+                    formatted += f"【Result #{i}】\n"
+                    formatted += f"Title: {title}\n"
+                    if date:
+                        formatted += f"Published: {date}\n"
+                    formatted += f"Content: {snippet}\n"
+                    formatted += f"Source: {link}\n"
+                    formatted += "─" * 50 + "\n\n"
                 
-                print(f"[SEARCH] Found {len(organic)} results for: {query[:50]}...")
+                formatted += "═══════════════════════════════════════════════════════\n"
+                formatted += "⚠️ IMPORTANT: Use ONLY the information above to answer.\n"
+                formatted += "DO NOT use your training data for facts covered here.\n"
+                formatted += "ALWAYS cite the source URLs in your response.\n"
+                formatted += "═══════════════════════════════════════════════════════\n"
+                
+                print(f"[SEARCH] ✅ Found {len(organic)} results for: {query[:50]}...")
                 return formatted
                 
         except httpx.RemoteProtocolError as e:
@@ -113,7 +130,7 @@ def web_search(query: str, max_results: int = 3, max_retries: int = 2) -> str:
             return ""
     
     # All retries exhausted
-    print(f"[SEARCH] Failed after {max_retries} attempts")
+    print(f"[SEARCH] ❌ Failed after {max_retries} attempts")
     return ""
 
 
