@@ -89,26 +89,27 @@ class BedrockService:
             "output_tokens": output_tokens
         }
     
-    def stream_nvidia(self, messages: List[Dict[str, str]], long_term_summary: str = "", 
+    def stream_nvidia(self, messages: List[Dict[str, str]], long_term_summary: str = "",
                      max_tokens: int = 4096,
-                     model_id: str = "nvidia.nemotron-nano-12b-v2") -> Generator[Dict[str, Any], None, None]:
+                     model_id: str = "nvidia.nemotron-nano-12b-v2",
+                     image_b64: str = "", image_mime: str = "image/jpeg") -> Generator[Dict[str, Any], None, None]:
         """
         Stream tokens from an NVIDIA model via Bedrock SSE.
-
-        NVIDIA uses the OpenAI chat format, so long_term_summary is prepended
-        as a system message at position 0 in the messages list.
-        
-        Args:
-            messages: Conversation history
-            long_term_summary: Persistent context summary
-            max_tokens: Maximum tokens to generate
-            model_id: Bedrock model ID to invoke
-            
-        Yields:
-            Dictionaries with token data or completion info
+        Supports optional image input for vision analysis.
         """
+        # If image provided, inject it into the last user message as a content list
+        messages_with_ctx = list(messages)
+        if image_b64 and messages_with_ctx and messages_with_ctx[-1]["role"] == "user":
+            last = messages_with_ctx[-1]
+            messages_with_ctx[-1] = {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:{image_mime};base64,{image_b64}"}},
+                    {"type": "text", "text": last["content"]}
+                ]
+            }
+
         # Prepend system context if we have long-term memory
-        messages_with_ctx = messages
         if long_term_summary:
             system_msg = {
                 "role": "system",
@@ -118,7 +119,7 @@ class BedrockService:
                     + long_term_summary
                 )
             }
-            messages_with_ctx = [system_msg] + messages
+            messages_with_ctx = [system_msg] + messages_with_ctx
 
         body = {
             "messages": messages_with_ctx,

@@ -11,7 +11,7 @@ class MemoryManager:
     """Manages short-term and long-term conversation memory."""
     
     def __init__(self, session_id: str, memory_dir: str, bedrock_client,
-                 summary_model_id: str = "anthropic.claude-3-haiku-20240307-v1:0"):
+                 summary_model_id: str = "nvidia.nemotron-nano-12b-v2"):
         """
         Initialize memory manager.
 
@@ -87,9 +87,9 @@ class MemoryManager:
                 "Be specific. Do NOT include greetings or filler. Output ONLY the summary text."
             )
             body = {
-                "anthropic_version": "bedrock-2023-05-31",
+                "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 200,
-                "messages": [{"role": "user", "content": prompt}]
+                "temperature": 0.3
             }
             try:
                 response = self.bedrock_client.invoke_model(
@@ -97,7 +97,7 @@ class MemoryManager:
                     body=json.dumps(body)
                 )
                 result = json.loads(response["body"].read())
-                new_summary = result["content"][0]["text"].strip()
+                new_summary = result["choices"][0]["message"]["content"].strip()
                 self.save_longterm(new_summary)
                 print(f"[MEMORY] Summary updated for session {self.session_id[:8]}…")
             except Exception as e:

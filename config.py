@@ -2,6 +2,10 @@
 import os
 from dataclasses import dataclass, field
 from typing import List
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 @dataclass
@@ -12,7 +16,6 @@ class BedrockConfig:
     read_timeout: int = 60
     max_retries: int = 0
     models: List[str] = field(default_factory=lambda: [
-        "anthropic.claude-3-haiku-20240307-v1:0",
         "nvidia.nemotron-nano-12b-v2",
     ])
 
@@ -22,7 +25,7 @@ class MemoryConfig:
     """Memory management configuration."""
     max_short_term: int = 10
     max_summary_tokens: int = 200
-    summary_model: str = "anthropic.claude-3-haiku-20240307-v1:0"
+    summary_model: str = "nvidia.nemotron-nano-12b-v2"
     memory_dir: str = "memory"
     vector_db_dir: str = "vector_db"
     enable_vector_memory: bool = True
@@ -48,8 +51,8 @@ class AppConfig:
     enable_prompt_enhancement: bool = True  # Enable automatic prompt improvement
     
     # Infiltration Mode Settings
-    enable_infiltration_mode: bool = True  # Allow users to enable infiltration mode
-    infiltration_auto_block: bool = False  # Auto-block detected attacks (False = log only)
+    enable_infiltration_mode: bool = False  # Disable by default for security
+    infiltration_auto_block: bool = True  # Auto-block detected attacks by default
     infiltration_log_file: str = "infiltration_log.json"  # Log file for detected attacks
     
     bedrock: BedrockConfig = field(default_factory=BedrockConfig)

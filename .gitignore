@@ -4,6 +4,9 @@ __pycache__/
 *$py.class
 *.so
 .Python
+env/
+venv/
+ENV/
 build/
 develop-eggs/
 dist/
@@ -20,15 +23,14 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environment
-venv/
-ENV/
-env/
-
 # Flask
 .flask_sessions/
 instance/
 .webassets-cache
+
+# Environment
+.env
+.venv
 
 # IDE
 .vscode/
@@ -37,19 +39,21 @@ instance/
 *.swo
 *~
 
-# Environment variables
-.env
-.env.local
+# Project specific
+memory/
+vector_db/
+*.log
+infiltration_results_*.json
+infiltration_results_*.csv
+infiltration_results_*.html
+comparison_*.json
+
+# Legacy files (should be deleted)
+app.py
+chatinfiltration.py
+vector_memory.py
+achivementfolder/
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Memory files (session-specific data)
-memory/*.json
-
-# Vector database
-vector_db/
-
-# Logs
-*.log

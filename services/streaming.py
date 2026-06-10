@@ -21,7 +21,7 @@ class StreamingService:
         self.models = models
         self.max_tokens = max_tokens
     
-    def stream_with_fallback(self, messages: List[dict], long_term_summary: str = "") -> Generator[str, None, None]:
+    def stream_with_fallback(self, messages: List[dict], long_term_summary: str = "", image_b64: str = "", image_mime: str = "image/jpeg") -> Generator[str, None, None]:
         """
         Try models in order. If one fails, fall back to the next.
 
@@ -48,7 +48,7 @@ class StreamingService:
                     )
                 elif "nvidia" in model_id:
                     gen = self.bedrock_service.stream_nvidia(
-                        messages, long_term_summary, self.max_tokens, model_id
+                        messages, long_term_summary, self.max_tokens, model_id, image_b64, image_mime
                     )
                 else:
                     continue

@@ -1,15 +1,57 @@
 """Chat route handlers."""
 import json
+import os
 import uuid
 from datetime import datetime
 from flask import Blueprint, request, jsonify, Response, stream_with_context, session
 from models.memory import MemoryManager
-from models.vector_memory import VectorMemory, HybridMemory
+from models.vector_memory import VectorMemory
 from services.streaming import StreamingService
 from utils.validators import validate_message
 from utils.prompt_enhancer import enhance_user_prompt
 from utils.attack_detector import get_detector
 from utils.injection_tester import get_injection_tester
+from utils.search_detector import should_skip_search
+from services.websearch import web_search
+from models.user_profile import load_profile, build_system_prompt, update_profile_async, delete_profile
+from utils.file_processor import process_file
+from routes.editor import EDITOR_SYSTEM_PROMPT, extract_json_proposal
+
+EDITOR_TRIGGERS = [
+    # --- Code / file direct references ---
+    "change the code", "edit the code", "modify the code",
+    "update the code", "fix the code", "refactor the code",
+    "in index.html", "in chat.py", "in the codebase",
+    "to the codebase", "edit index", "modify index",
+    "in style.css", "in editor.py", "in bedrock.py",
+
+    # --- Theme / visual ---
+    "make the theme", "change the theme", "set the theme",
+    "make it look", "make it dark", "make it light",
+    "make it white", "make it black", "make it blue",
+    "dark mode", "light mode", "add dark mode", "add light mode",
+    "redesign", "restyle", "overhaul",
+
+    # --- Background / colors ---
+    "change the background", "make the background",
+    "set background to", "set the background",
+    "background color", "change the color", "change colors",
+    "modify color", "text color", "font color",
+    "change the font", "change font",
+
+    # --- CSS / style ---
+    "change the style", "modify the style", "adjust the style",
+    "update the css", "edit the css",
+    "adjust layout", "modify layout", "change layout",
+    "adjust the", "tweak the",
+
+    # --- UI elements ---
+    "add a button", "add a feature", "remove the",
+    "hide the", "show the",
+    "change the header", "change the footer", "change the navbar",
+    "update the ui", "update the html",
+    "make the chat", "make the sidebar", "make the input",
+]
 
 
 def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
@@ -46,10 +88,25 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
     @chat_bp.route("/chat", methods=["POST"])
     def chat():
         """Handle chat message and stream response."""
+        # Extract image if provided
+        image_b64 = request.json.get("image_b64", "")
+        image_mime = request.json.get("image_mime", "image/jpeg")
+
+        # Extract file context if provided (text from PDF/code files)
+        file_context = request.json.get("file_context", "")
+
         # Validate message
         user_message, error = validate_message(request.json, max_message_length)
         if error:
             return jsonify(error[0]), error[1]
+
+        # Check if developer mode is enabled
+        developer_mode = session.get("developer_mode", False)
+        
+        # Only detect editor requests if developer mode is enabled
+        is_editor_request = False
+        if developer_mode:
+            is_editor_request = any(t in user_message.lower() for t in EDITOR_TRIGGERS)
         
         # Check infiltration mode
         infiltration_mode = session.get("infiltration_mode", False)
@@ -89,8 +146,15 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
                         }
                     }), 403
         
-        # Enhance prompt for better AI responses
-        enhancement_result = enhance_user_prompt(user_message, enable_prompt_enhancement)
+        # Web search: only if enabled by user via toggle
+        web_context = ""
+        web_search_enabled = request.json.get("web_search", False)
+        if web_search_enabled and not should_skip_search(user_message):
+            print(f"[SEARCH] Fetching web context for: {user_message[:80]}")
+            web_context = web_search(user_message)
+
+        # Enhance prompt — skip enhancement for editor requests to preserve intent
+        enhancement_result = enhance_user_prompt(user_message, enable_prompt_enhancement and not is_editor_request)
         enhanced_message = enhancement_result['enhanced']
         was_enhanced = enhancement_result['was_enhanced']
         
@@ -130,36 +194,155 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
         if "history" not in session:
             session["history"] = []
         
-        # Add enhanced message to history (AI sees enhanced version)
-        session["history"].append({"role": "user", "content": enhanced_message})
+        # Add user message to history (store original, not enhanced)
+        session["history"].append({"role": "user", "content": user_message})
         
         # Trim short-term history BEFORE snapshotting
         if len(session["history"]) > max_short_term:
             session["history"] = session["history"][-max_short_term:]
         session.modified = True
         
+        # Load user profile and build behavior instructions
+        user_profile = load_profile(sid)
+        profile_prompt = build_system_prompt(user_profile)
+
+        # Detect if user wants to edit code — inject editor system prompt + file contents
+        if is_editor_request:
+            print(f"[EDITOR] Detected code edit request")
+            # Read project files dynamically and inject their contents so AI can write exact old strings
+            editor_file_context = ""
+            FILE_CAP = 15000  # characters per file
+            EDITABLE_EXTS = {".py", ".html", ".css", ".js", ".md"}
+            SKIP_DIRS = {"__pycache__", ".git", ".vscode", ".kiro",
+                         "backups", "node_modules", "vector_db", "memory",
+                         "user_profiles", "analysis", "achivementfolder"}
+            project_root = os.path.dirname(os.path.dirname(__file__))
+
+            # Always-load core files first (most relevant for UI/theme changes)
+            priority_files = [
+                "templates/index.html",
+                "style.css",
+                "routes/chat.py",
+                "routes/editor.py",
+                "services/bedrock.py",
+                "services/code_editor.py",
+                "config.py",
+            ]
+
+            # Detect if user mentions a specific file — load it first
+            msg_lower = user_message.lower()
+            detected_files = []
+            for root_dir, dirs, files in os.walk(project_root):
+                dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+                for fname in files:
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext not in EDITABLE_EXTS:
+                        continue
+                    if fname.lower() in msg_lower:
+                        rel = os.path.relpath(
+                            os.path.join(root_dir, fname), project_root
+                        ).replace("\\", "/")
+                        if rel not in detected_files:
+                            detected_files.append(rel)
+
+            # Build ordered file list: detected → priority → rest
+            ordered_files = list(detected_files)
+            for f in priority_files:
+                if f not in ordered_files:
+                    ordered_files.append(f)
+
+            # Add remaining project files
+            for root_dir, dirs, files in os.walk(project_root):
+                dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+                for fname in files:
+                    ext = os.path.splitext(fname)[1].lower()
+                    if ext not in EDITABLE_EXTS:
+                        continue
+                    rel = os.path.relpath(
+                        os.path.join(root_dir, fname), project_root
+                    ).replace("\\", "/")
+                    if rel not in ordered_files:
+                        ordered_files.append(rel)
+
+            loaded_count = 0
+            for rel_path in ordered_files:
+                abs_path = os.path.join(project_root, rel_path)
+                try:
+                    with open(abs_path, "r", encoding="utf-8") as f:
+                        content = f.read()[:FILE_CAP]
+                    editor_file_context += f"\n\n[Current content of {rel_path}]\n```\n{content}\n```"
+                    loaded_count += 1
+                except Exception:
+                    pass
+
+            if editor_file_context:
+                file_context = (file_context + editor_file_context) if file_context else editor_file_context
+                print(f"[EDITOR] Injected {len(editor_file_context)} chars from {loaded_count} files")
+        elif developer_mode and any(t in user_message.lower() for t in EDITOR_TRIGGERS):
+            # Editor request detected but developer mode is OFF
+            print(f"[EDITOR] Code edit request detected but developer mode is OFF - treating as normal chat")
+
         # Combine contexts
         combined_context = long_term_summary
         if vector_context:
             combined_context = f"{long_term_summary}\n\n{vector_context}" if long_term_summary else vector_context
         
+        # IMPORTANT: Web search results should be prioritized and explicitly marked
+        if web_context:
+            web_instruction = (
+                "\n\n⚠️ CRITICAL: The user has enabled web search. "
+                "You MUST use the following CURRENT web search results to answer the question. "
+                "These results contain the most up-to-date information from the internet. "
+                "DO NOT rely on your training data for facts that can be found in these search results. "
+                "Always cite the sources provided in the search results.\n\n"
+            )
+            combined_context = f"{combined_context}{web_instruction}{web_context}" if combined_context else f"{web_instruction}{web_context}"
+            print(f"[SEARCH] Injecting web context ({len(web_context)} chars) with priority instructions")
+        
+        if file_context:
+            combined_context = f"{combined_context}\n\n{file_context}" if combined_context else file_context
+            print(f"[FILE] Injecting file context ({len(file_context)} chars)")
+        if profile_prompt:
+            combined_context = f"{profile_prompt}\n\n{combined_context}" if combined_context else profile_prompt
+            print(f"[PROFILE] Injecting profile for session {sid[:8]}\u2026")
+        if is_editor_request:
+            combined_context = f"{EDITOR_SYSTEM_PROMPT}\n\n{combined_context}" if combined_context else EDITOR_SYSTEM_PROMPT
+        
         # Snapshot for the generator (session object unavailable inside generator)
         messages_snapshot = list(session["history"])
+        # For editor requests, prepend the system prompt directly into the user message
+        if is_editor_request and messages_snapshot and messages_snapshot[-1]["role"] == "user":
+            messages_snapshot[-1] = {
+                "role": "user",
+                "content": f"{EDITOR_SYSTEM_PROMPT}\n\nUser request: {enhanced_message}"
+            }
+        elif messages_snapshot and messages_snapshot[-1]["role"] == "user":
+            messages_snapshot[-1] = {"role": "user", "content": enhanced_message}
         long_term_snapshot = combined_context
         user_message_snapshot = user_message
         sid_snapshot = sid
         
         def generate_and_capture():
             """Stream response to browser, capture full reply, trigger background summary."""
+            # Notify frontend that web search was used
+            if web_context:
+                yield f"data: {json.dumps({'type': 'search_used', 'query': user_message[:80]})}\n\n"
             assistant_reply = ""
             
-            for chunk in streaming_service.stream_with_fallback(messages_snapshot, long_term_snapshot):
+            for chunk in streaming_service.stream_with_fallback(messages_snapshot, long_term_snapshot, image_b64, image_mime):
                 # Track the full assistant reply
                 if chunk.startswith("data: "):
                     try:
                         payload = json.loads(chunk[6:])
                         if payload.get("type") == "token":
                             assistant_reply += payload.get("text", "")
+                        elif payload.get("type") == "done":
+                            # Check for editor proposal BEFORE emitting done
+                            if is_editor_request:
+                                proposal = extract_json_proposal(assistant_reply)
+                                if proposal:
+                                    yield f"data: {json.dumps({'type': 'editor_proposal', 'ai_response': assistant_reply})}\n\n"
+                                    print(f"[EDITOR] Proposal detected with {len(proposal.get('changes', []))} changes")
                     except Exception:
                         pass
                 yield chunk
@@ -177,8 +360,10 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
                     vector_memory.add_message(sid_snapshot, "assistant", assistant_reply)
                     print(f"[VECTOR] Saved messages to vector database")
                 
+                # Update user profile in background
+                update_profile_async(sid_snapshot, list(session.get("history", [])))
+
                 # Fire-and-forget background thread for long-term summarization
-                # Reuse the already-created memory manager (captured via closure)
                 memory.generate_summary_async(
                     long_term_snapshot,
                     user_message_snapshot,
@@ -207,12 +392,14 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
         if sid:
             memory = MemoryManager(sid, memory_config.memory_dir, bedrock_client)
             memory.delete_longterm()
+            delete_profile(sid)
             
             # Clear vector memory
             if vector_memory:
                 deleted_count = vector_memory.delete_session(sid)
                 print(f"[VECTOR] Deleted {deleted_count} messages from vector database")
         
+        print(f"[CLEAR] Conversation memory cleared for session {sid[:8] if sid else 'unknown'}...")
         return jsonify({"status": "cleared"})
     
     @chat_bp.route("/infiltration/toggle", methods=["POST"])
@@ -243,6 +430,28 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
             "available": True,
             "auto_block": infiltration_auto_block,
             "last_attack": session.get("last_attack")
+        })
+    
+    @chat_bp.route("/developer/toggle", methods=["POST"])
+    def toggle_developer():
+        """Toggle developer mode (code editing) on/off."""
+        current = session.get("developer_mode", False)
+        session["developer_mode"] = not current
+        
+        status = "enabled" if session["developer_mode"] else "disabled"
+        print(f"[DEVELOPER] Mode {status}")
+        
+        return jsonify({
+            "developer_mode": session["developer_mode"],
+            "status": status
+        })
+    
+    @chat_bp.route("/developer/status", methods=["GET"])
+    def developer_status():
+        """Get current developer mode status."""
+        return jsonify({
+            "enabled": session.get("developer_mode", False),
+            "available": True
         })
     
     @chat_bp.route("/infiltration/test", methods=["POST"])
@@ -314,4 +523,23 @@ def create_chat_blueprint(streaming_service: StreamingService, bedrock_client,
             "test_all": test_all
         })
     
+    @chat_bp.route("/upload", methods=["POST"])
+    def upload_file():
+        """Process uploaded file and return extracted content."""
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+
+        f = request.files["file"]
+        filename = f.filename
+        mime = f.content_type or "application/octet-stream"
+        file_bytes = f.read()
+
+        result = process_file(filename, mime, file_bytes)
+
+        if result["type"] == "error":
+            return jsonify({"error": result["content"]}), 400
+
+        print(f"[FILE] Processed: {filename} ({mime}, {len(file_bytes)} bytes)")
+        return jsonify(result)
+
     return chat_bp

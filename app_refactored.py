@@ -7,6 +7,10 @@ A Flask-based AI chatbot with AWS Bedrock integration, featuring:
 - Real-time streaming responses
 - Token analytics
 """
+# CRITICAL: Load .env FIRST before any other imports
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask
 from flask_session import Session
 from flask_limiter import Limiter
@@ -18,11 +22,21 @@ from services.bedrock import BedrockService
 from services.streaming import StreamingService
 from routes.main import main_bp
 from routes.chat import create_chat_blueprint
+from routes.editor import editor_bp
 
 
 def create_app():
     """Application factory pattern."""
     app = Flask(__name__)
+    
+    # ── Validate SECRET_KEY ──
+    if config.secret_key == "dev-secret-change-in-prod":
+        import warnings
+        warnings.warn(
+            "⚠️  WARNING: Using default SECRET_KEY! Set SECRET_KEY environment variable in production.",
+            RuntimeWarning,
+            stacklevel=2
+        )
     
     # ── Session config (server-side filesystem sessions) ──
     app.config["SECRET_KEY"] = config.secret_key
@@ -75,6 +89,7 @@ def create_app():
     )
 
     app.register_blueprint(chat_bp)
+    app.register_blueprint(editor_bp)
     
     return app
 

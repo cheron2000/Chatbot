@@ -28,23 +28,28 @@ git clone <repository-url>
 cd Chatbot
 ```
 
-2. Install dependencies:
+2. Clean up legacy files (recommended):
+```bash
+cleanup.bat
+```
+
+3. Install dependencies:
 ```bash
 py -3.10 -m pip install -r requirements.txt
 ```
 
-3. Set environment variables (optional):
+4. Set environment variables (REQUIRED for production):
 ```bash
-export SECRET_KEY="your-secret-key"
-export AWS_REGION="us-east-1"
+set SECRET_KEY=your-secret-key-here
+set AWS_REGION=us-east-1
 ```
 
-4. Run the application:
+5. Run the application:
 ```bash
 py -3.10 app_refactored.py
 ```
 
-5. Open your browser:
+6. Open your browser:
 ```
 http://localhost:5000
 ```
@@ -86,10 +91,30 @@ class AppConfig:
     max_message_length: int = 4000    # Max chars per message
     max_tokens: int = 4096            # Max tokens per response
     
+    # Security settings
+    enable_infiltration_mode: bool = False      # Disable in production
+    infiltration_auto_block: bool = True        # Auto-block attacks
+    
     bedrock: BedrockConfig            # AWS Bedrock settings
     memory: MemoryConfig              # Memory settings
     rate_limit: RateLimitConfig       # Rate limiting
 ```
+
+### Security Best Practices
+
+1. **Always set SECRET_KEY** in production:
+   ```bash
+   set SECRET_KEY=%RANDOM%%RANDOM%%RANDOM%
+   ```
+
+2. **Keep infiltration mode disabled** unless actively testing security
+
+3. **Enable auto-blocking** to prevent attacks:
+   ```python
+   infiltration_auto_block: bool = True
+   ```
+
+4. **Use pinned dependencies** (already configured in requirements.txt)
 
 ## API Endpoints
 
@@ -135,6 +160,12 @@ Clear conversation history.
 - Stored as JSON files per session
 - Updated asynchronously in background
 - Persists across sessions
+
+### Vector Memory
+- Semantic search through conversation history using ChromaDB
+- Stores original user messages (not enhanced versions)
+- Enables finding relevant past conversations
+- Automatically cleared with session
 
 ## Model Fallback
 
@@ -240,6 +271,7 @@ app.config["SESSION_REDIS"] = redis.from_url("redis://localhost:6379")
 - Check Python version: `py -3.10 --version`
 - Verify dependencies: `py -3.10 -m pip list`
 - Check AWS credentials: `aws sts get-caller-identity`
+- **Check SECRET_KEY warning**: If you see a warning about default SECRET_KEY, set it via environment variable
 
 ### Models failing
 - Verify Bedrock access in your AWS region
@@ -250,10 +282,16 @@ app.config["SESSION_REDIS"] = redis.from_url("redis://localhost:6379")
 - Check `memory/` directory permissions
 - Verify disk space available
 - Check session directory: `.flask_sessions/`
+- Check vector DB directory: `vector_db/`
 
 ### Rate limiting
 - Adjust limits in `config.py`
 - Use Redis for distributed rate limiting
+
+### Legacy file conflicts
+- Run `cleanup.bat` to remove old files
+- Check `.gitignore` is properly configured
+- Ensure you're running `app_refactored.py`, not `app.py`
 
 ## License
 
