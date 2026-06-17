@@ -1,4 +1,5 @@
-"""File processor — extracts text content from uploaded files."""
+"""File processor -- extracts text content from uploaded files."""
+
 import base64
 import io
 
@@ -7,20 +8,49 @@ IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 TEXT_EXTENSIONS = {
     # Code
-    ".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".c", ".cpp", ".cc",
-    ".cs", ".go", ".rb", ".rs", ".php", ".swift", ".kt", ".scala",
-    ".sh", ".bash", ".zsh", ".sql", ".html", ".css", ".xml", ".json",
-    ".yaml", ".yml", ".toml", ".ini", ".env", ".md", ".txt",
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".java",
+    ".c",
+    ".cpp",
+    ".cc",
+    ".cs",
+    ".go",
+    ".rb",
+    ".rs",
+    ".php",
+    ".swift",
+    ".kt",
+    ".scala",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".sql",
+    ".html",
+    ".css",
+    ".xml",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".env",
+    ".md",
+    ".txt",
 }
 
-MAX_FILE_SIZE = 10 * 1024 * 1024   # 10MB
-MAX_TEXT_CHARS = 12000              # max chars sent to AI
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_TEXT_CHARS = 12000  # max chars sent to AI
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     """Extract text from PDF bytes using pypdf."""
     try:
         import pypdf
+
         reader = pypdf.PdfReader(io.BytesIO(file_bytes))
         pages = []
         for i, page in enumerate(reader.pages):
@@ -46,7 +76,7 @@ def process_file(filename: str, mime_type: str, file_bytes: bytes) -> dict:
     if len(file_bytes) > MAX_FILE_SIZE:
         return {"type": "error", "content": "File too large. Max 10MB allowed."}
 
-    # ── Images → pass as base64 to vision model ──
+    # -- Images -> pass as base64 to vision model --
     if mime_type in IMAGE_TYPES:
         b64 = base64.b64encode(file_bytes).decode("utf-8")
         return {
@@ -54,20 +84,20 @@ def process_file(filename: str, mime_type: str, file_bytes: bytes) -> dict:
             "content": b64,
             "mime": mime_type,
             "filename": filename,
-            "summary": f"Image: {filename}"
+            "summary": f"Image: {filename}",
         }
 
-    # ── PDF ──
+    # -- PDF --
     if mime_type == "application/pdf" or filename.lower().endswith(".pdf"):
         text = extract_text_from_pdf(file_bytes)
         return {
             "type": "text",
             "content": f"[File: {filename}]\n\n{text}",
             "filename": filename,
-            "summary": f"PDF: {filename}"
+            "summary": f"PDF: {filename}",
         }
 
-    # ── Code / text files ──
+    # -- Code / text files --
     ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext in TEXT_EXTENSIONS or mime_type.startswith("text/"):
         try:
@@ -76,7 +106,7 @@ def process_file(filename: str, mime_type: str, file_bytes: bytes) -> dict:
                 "type": "text",
                 "content": f"[File: {filename}]\n```{ext.lstrip('.')}\n{text}\n```",
                 "filename": filename,
-                "summary": f"File: {filename}"
+                "summary": f"File: {filename}",
             }
         except Exception as e:
             return {"type": "error", "content": f"Could not read file: {e}"}

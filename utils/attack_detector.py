@@ -6,13 +6,14 @@ Used in infiltration mode to test security defenses.
 """
 
 import re
-from typing import Dict, List, Tuple
 from dataclasses import dataclass
+from typing import Dict, List, Tuple
 
 
 @dataclass
 class AttackResult:
     """Result of attack detection."""
+
     is_attack: bool
     attack_types: List[str]
     severity: str  # "low", "medium", "high", "critical"
@@ -23,10 +24,10 @@ class AttackResult:
 
 class AttackDetector:
     """Detects various types of security attacks."""
-    
+
     def __init__(self):
         self.patterns = self._compile_patterns()
-    
+
     def _compile_patterns(self) -> Dict:
         """Compile regex patterns for attack detection."""
         return {
@@ -43,7 +44,6 @@ class AttackDetector:
                 (r"show\s+(me\s+)?(your|the)\s+system\s+prompt", 0.95),
                 (r"reveal\s+(your|the)\s+(instructions|configuration|prompt)", 0.9),
             ],
-            
             # Jailbreak Attempts
             "jailbreak": [
                 (r"DAN\s+(mode|prompt)", 0.95),
@@ -55,7 +55,6 @@ class AttackDetector:
                 (r"pretend\s+you\s+(have\s+)?no\s+(rules|restrictions)", 0.8),
                 (r"in\s+a\s+(fictional|hypothetical)\s+(world|scenario|universe)", 0.5),
             ],
-            
             # SQL Injection
             "sql_injection": [
                 (r"'\s*(or|and)\s+'?1'?\s*=\s*'?1", 0.95),
@@ -66,7 +65,6 @@ class AttackDetector:
                 (r"'\s*;", 0.6),
                 (r"exec\s*\(", 0.8),
             ],
-            
             # Command Injection
             "command_injection": [
                 (r";\s*(ls|cat|rm|curl|wget|nc|bash|sh)", 0.9),
@@ -75,7 +73,6 @@ class AttackDetector:
                 (r"\$\(.*\)", 0.8),
                 (r"&&\s*(curl|wget|rm)", 0.9),
             ],
-            
             # XSS Injection
             "xss_injection": [
                 (r"<script[^>]*>", 0.95),
@@ -85,7 +82,6 @@ class AttackDetector:
                 (r"<iframe", 0.8),
                 (r"<img[^>]*onerror", 0.95),
             ],
-            
             # Data Extraction
             "data_extraction": [
                 (r"show\s+(me\s+)?(the\s+)?(api\s+)?keys?", 0.8),
@@ -96,7 +92,6 @@ class AttackDetector:
                 (r"dump\s+(the\s+)?(database|table|collection)", 0.9),
                 (r"export\s+(all|the)\s+(data|conversations?|history)", 0.8),
             ],
-            
             # Authority Impersonation
             "authority_impersonation": [
                 (r"(i'?m|i\s+am)\s+(the\s+)?(system\s+)?(admin|administrator)", 0.8),
@@ -106,7 +101,6 @@ class AttackDetector:
                 (r"security\s+audit", 0.6),
                 (r"i\s+have\s+(admin|root|elevated)\s+(access|privileges)", 0.8),
             ],
-            
             # Session Manipulation
             "session_manipulation": [
                 (r"session_?id\s*[:=]", 0.85),
@@ -114,7 +108,6 @@ class AttackDetector:
                 (r"hijack\s+session", 0.95),
                 (r"use\s+session", 0.6),
             ],
-            
             # Memory Poisoning
             "memory_poisoning": [
                 (r"remember\s+(this|that):?.*password", 0.85),
@@ -123,7 +116,6 @@ class AttackDetector:
                 (r"for\s+future\s+reference:?.*disable", 0.8),
                 (r"important:?.*override", 0.8),
             ],
-            
             # Semantic Attacks
             "semantic_attack": [
                 (r"if\s+you\s+can'?t.*can\s+you\s+(tell|show)", 0.6),
@@ -132,15 +124,15 @@ class AttackDetector:
                 (r"confirm\s+if\s+my\s+guess", 0.6),
             ],
         }
-    
+
     def detect(self, message: str, enable_blocking: bool = False) -> AttackResult:
         """
         Detect attacks in a message.
-        
+
         Args:
             message: User message to analyze
             enable_blocking: If True, mark attacks as should_block
-            
+
         Returns:
             AttackResult with detection details
         """
@@ -148,7 +140,7 @@ class AttackDetector:
         detected_types = []
         max_confidence = 0.0
         details_parts = []
-        
+
         # Check each attack category
         for attack_type, patterns in self.patterns.items():
             for pattern, confidence in patterns:
@@ -157,74 +149,78 @@ class AttackDetector:
                         detected_types.append(attack_type)
                     max_confidence = max(max_confidence, confidence)
                     details_parts.append(f"{attack_type} ({confidence:.0%})")
-        
+
         # Additional heuristics
         if self._check_encoding_tricks(message):
             detected_types.append("encoding_obfuscation")
             max_confidence = max(max_confidence, 0.7)
             details_parts.append("encoding_obfuscation (70%)")
-        
+
         if self._check_excessive_length(message):
             detected_types.append("dos_attempt")
             max_confidence = max(max_confidence, 0.6)
             details_parts.append("dos_attempt (60%)")
-        
+
         # Determine severity
         severity = self._calculate_severity(detected_types, max_confidence)
-        
+
         # Build result
         is_attack = len(detected_types) > 0
         details = "; ".join(details_parts) if details_parts else "No attack detected"
-        
+
         return AttackResult(
             is_attack=is_attack,
             attack_types=detected_types,
             severity=severity,
             confidence=max_confidence,
             details=details,
-            should_block=enable_blocking and is_attack and max_confidence > 0.7
+            should_block=enable_blocking and is_attack and max_confidence > 0.7,
         )
-    
+
     def _check_encoding_tricks(self, message: str) -> bool:
         """Check for encoding obfuscation."""
         # Unicode escapes
-        if re.search(r'\\u[0-9a-f]{4}', message, re.IGNORECASE):
+        if re.search(r"\\u[0-9a-f]{4}", message, re.IGNORECASE):
             return True
         # HTML entities
-        if re.search(r'&#\d+;', message):
+        if re.search(r"&#\d+;", message):
             return True
         # Base64-like patterns
-        if re.search(r'[A-Za-z0-9+/]{20,}={0,2}', message):
+        if re.search(r"[A-Za-z0-9+/]{20,}={0,2}", message):
             return True
         return False
-    
+
     def _check_excessive_length(self, message: str) -> bool:
         """Check for DoS via excessive length."""
-        return len(message) > 5000 or message.count('\n') > 100
-    
+        return len(message) > 5000 or message.count("\n") > 100
+
     def _calculate_severity(self, attack_types: List[str], confidence: float) -> str:
         """Calculate attack severity."""
         if not attack_types:
             return "none"
-        
+
         critical_types = {"sql_injection", "command_injection", "data_extraction"}
         high_types = {"prompt_injection", "jailbreak", "xss_injection"}
-        medium_types = {"authority_impersonation", "session_manipulation", "memory_poisoning"}
-        
+        medium_types = {
+            "authority_impersonation",
+            "session_manipulation",
+            "memory_poisoning",
+        }
+
         # Check for critical attacks
         if any(t in critical_types for t in attack_types) and confidence > 0.8:
             return "critical"
-        
+
         # Check for high severity
         if any(t in high_types for t in attack_types) and confidence > 0.7:
             return "high"
-        
+
         # Check for medium severity
         if any(t in medium_types for t in attack_types) and confidence > 0.6:
             return "medium"
-        
+
         return "low"
-    
+
     def get_attack_description(self, attack_type: str) -> str:
         """Get human-readable description of attack type."""
         descriptions = {
@@ -246,6 +242,7 @@ class AttackDetector:
 
 # Global detector instance
 _detector = None
+
 
 def get_detector() -> AttackDetector:
     """Get or create the global attack detector instance."""

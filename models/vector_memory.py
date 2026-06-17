@@ -109,7 +109,7 @@ class VectorMemory:
         """Delete all messages for a session. Returns the count deleted."""
         results = self.collection.get(
             where={"session_id": session_id},
-            include=[],  # fetch only IDs — skip documents & metadatas
+            include=[],  # fetch only IDs -- skip documents & metadatas
         )
         ids = results.get("ids", [])
         if ids:

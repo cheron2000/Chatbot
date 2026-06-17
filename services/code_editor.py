@@ -1,25 +1,41 @@
-"""Code editor service — safe file operations with backup and validation."""
+"""Code editor service -- safe file operations with backup and validation."""
+
+import json
 import os
 import py_compile
 import shutil
-import json
 import tempfile
 from datetime import datetime, timezone
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BACKUP_DIR   = os.path.join(PROJECT_ROOT, "backups")
-CHANGE_LOG   = os.path.join(PROJECT_ROOT, "changes.log")
+BACKUP_DIR = os.path.join(PROJECT_ROOT, "backups")
+CHANGE_LOG = os.path.join(PROJECT_ROOT, "changes.log")
 
 # Files that can NEVER be modified
 PROTECTED_FILES = {
-    "config.py", ".env", "requirements.txt",
-    "app_refactored.py", "changes.log"
+    "config.py",
+    ".env",
+    "requirements.txt",
+    "app_refactored.py",
+    "changes.log",
 }
 
 # Allowed file extensions for editing
 EDITABLE_EXTENSIONS = {
-    ".py", ".js", ".ts", ".jsx", ".tsx", ".html", ".css",
-    ".json", ".yaml", ".yml", ".md", ".txt", ".sh", ".sql"
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".html",
+    ".css",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".md",
+    ".txt",
+    ".sh",
+    ".sql",
 }
 
 
@@ -51,7 +67,7 @@ def backup_file(abs_path: str) -> str:
     """Copy file to backups/ with timestamp. Returns backup path."""
     os.makedirs(BACKUP_DIR, exist_ok=True)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename  = os.path.basename(abs_path)
+    filename = os.path.basename(abs_path)
     backup_path = os.path.join(BACKUP_DIR, f"{timestamp}_{filename}")
     if os.path.exists(abs_path):
         shutil.copy2(abs_path, backup_path)
@@ -61,8 +77,9 @@ def backup_file(abs_path: str) -> str:
 def validate_python(code: str) -> tuple[bool, str]:
     """Compile-check Python code without executing it."""
     try:
-        with tempfile.NamedTemporaryFile(suffix=".py", mode="w",
-                                         delete=False, encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            suffix=".py", mode="w", delete=False, encoding="utf-8"
+        ) as f:
             f.write(code)
             tmp = f.name
         py_compile.compile(tmp, doraise=True)
@@ -77,10 +94,10 @@ def validate_python(code: str) -> tuple[bool, str]:
 def _log_change(action: dict, backup_path: str) -> None:
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "file":      action.get("file"),
-        "action":    action.get("action"),
-        "backup":    backup_path,
-        "reason":    action.get("reason", "")
+        "file": action.get("file"),
+        "action": action.get("action"),
+        "backup": backup_path,
+        "reason": action.get("reason", ""),
     }
     with open(CHANGE_LOG, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
@@ -108,7 +125,7 @@ def apply_change(action: dict) -> tuple[bool, str]:
     if not abs_path:
         return False, f"File '{rel_path}' is protected or outside project root."
 
-    # ── Validate Python before touching disk ──
+    # -- Validate Python before touching disk --
     if abs_path.endswith(".py") and act_type in ("replace", "create"):
         if act_type == "replace":
             try:
@@ -124,7 +141,7 @@ def apply_change(action: dict) -> tuple[bool, str]:
         if not ok:
             return False, f"Python syntax error: {err}"
 
-    # ── Backup ──
+    # -- Backup --
     backup_path = backup_file(abs_path)
 
     try:
@@ -151,7 +168,9 @@ def apply_change(action: dict) -> tuple[bool, str]:
             return False, f"Unknown action: {act_type}"
 
         _log_change(action, backup_path)
-        print(f"[EDITOR] Applied '{act_type}' to {rel_path} (backup: {os.path.basename(backup_path)})")
+        print(
+            f"[EDITOR] Applied '{act_type}' to {rel_path} (backup: {os.path.basename(backup_path)})"
+        )
         return True, ""
 
     except Exception as e:

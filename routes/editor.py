@@ -1,13 +1,16 @@
-"""Editor routes — propose, apply, and restore code changes."""
+"""Editor routes -- propose, apply, and restore code changes."""
+
 import json
 import os
-from flask import Blueprint, request, jsonify, session
-from services.code_editor import apply_change, restore_file, list_backups, PROJECT_ROOT
+
+from flask import Blueprint, jsonify, request, session
+
+from services.code_editor import PROJECT_ROOT, apply_change, list_backups, restore_file
 
 editor_bp = Blueprint("editor", __name__)
 
 # System prompt injected when AI is asked to propose code changes
-EDITOR_SYSTEM_PROMPT = """⚠️ CRITICAL: CODE EDITOR MODE ACTIVATED ⚠️
+EDITOR_SYSTEM_PROMPT = """!! CRITICAL: CODE EDITOR MODE ACTIVATED !!
 
 You MUST respond with EXACTLY this JSON structure. ANY deviation will cause system failure.
 
@@ -33,16 +36,16 @@ REQUIRED FORMAT (copy this structure exactly):
 ```
 
 MANDATORY RULES:
-1. Output ONLY the JSON block above — nothing before, nothing after
+1. Output ONLY the JSON block above -- nothing before, nothing after
 2. "old" MUST be copied character-for-character from the [Current content of ...] blocks provided
 3. "action" MUST be one of: "replace", "append", or "create"
-4. For CSS/theme changes: the CSS lives inside a <style> tag in templates/index.html — search for it there
+4. For CSS/theme changes: the CSS lives inside a <style> tag in templates/index.html -- search for it there
 5. Copy the ENTIRE CSS rule (selector + opening brace + properties + closing brace) as "old"
 6. If you cannot find the EXACT text to replace, use "append" to add new CSS after the </style> tag
 7. NEVER modify: config.py, .env, requirements.txt, app_refactored.py
 8. Always check [Current content of templates/index.html] carefully for the real CSS before writing "old"
 
-EXAMPLE 1 — Changing background color (CSS inside index.html):
+EXAMPLE 1 -- Changing background color (CSS inside index.html):
 ```json
 {
   "summary": "Change background to white",
@@ -58,7 +61,7 @@ EXAMPLE 1 — Changing background color (CSS inside index.html):
 }
 ```
 
-EXAMPLE 2 — Adding a new CSS rule (when you can't find existing rule to replace):
+EXAMPLE 2 -- Adding a new CSS rule (when you can't find existing rule to replace):
 ```json
 {
   "summary": "Override chat bubble color to blue",
@@ -74,7 +77,7 @@ EXAMPLE 2 — Adding a new CSS rule (when you can't find existing rule to replac
 }
 ```
 
-EXAMPLE 3 — Changing Python code:
+EXAMPLE 3 -- Changing Python code:
 ```json
 {
   "summary": "Increase max message length",
@@ -90,7 +93,7 @@ EXAMPLE 3 — Changing Python code:
 }
 ```
 
-⚠️ REMEMBER: Read the provided file contents carefully. Copy "old" EXACTLY as-is."""
+!! REMEMBER: Read the provided file contents carefully. Copy "old" EXACTLY as-is."""
 
 
 def extract_json_proposal(text: str) -> dict | None:
@@ -98,37 +101,43 @@ def extract_json_proposal(text: str) -> dict | None:
     # Method 1: Extract from ```json code block
     try:
         start = text.find("```json")
-        end   = text.find("```", start + 6)
+        end = text.find("```", start + 6)
         if start != -1 and end != -1:
-            json_str = text[start + 7:end].strip()
+            json_str = text[start + 7 : end].strip()
             proposal = json.loads(json_str)
             # Validate structure
             if "changes" in proposal and isinstance(proposal["changes"], list):
                 return proposal
             else:
-                print(f"[EDITOR] JSON parsed but missing 'changes' array. Keys found: {list(proposal.keys())}")
+                print(
+                    f"[EDITOR] JSON parsed but missing 'changes' array. Keys found: {list(proposal.keys())}"
+                )
     except Exception as e:
         print(f"[EDITOR] Failed to parse JSON code block: {e}")
 
     # Method 2: Try raw JSON fallback
     try:
         start = text.find("{")
-        end   = text.rfind("}") + 1
+        end = text.rfind("}") + 1
         if start != -1 and end > start:
             proposal = json.loads(text[start:end])
             # Validate structure
             if "changes" in proposal and isinstance(proposal["changes"], list):
                 return proposal
             else:
-                print(f"[EDITOR] Raw JSON parsed but missing 'changes' array. Keys: {list(proposal.keys())}")
+                print(
+                    f"[EDITOR] Raw JSON parsed but missing 'changes' array. Keys: {list(proposal.keys())}"
+                )
     except Exception as e:
         print(f"[EDITOR] Failed to parse raw JSON: {e}")
 
     # Method 3: Detect common wrong formats and log them clearly
     if "CODE_EDITOR_MODE" in text:
-        print(f"[EDITOR] ERROR: AI used wrong format — CODE_EDITOR_MODE detected")
-    elif "\"action\"" in text and "\"changes\"" not in text:
-        print(f"[EDITOR] ERROR: AI used wrong format — 'action' key without 'changes' array")
+        print(f"[EDITOR] ERROR: AI used wrong format -- CODE_EDITOR_MODE detected")
+    elif '"action"' in text and '"changes"' not in text:
+        print(
+            f"[EDITOR] ERROR: AI used wrong format -- 'action' key without 'changes' array"
+        )
     elif "{" not in text:
         print(f"[EDITOR] ERROR: AI response contains no JSON at all")
     else:
@@ -150,11 +159,15 @@ def get_file_preview(rel_path: str, old_str: str, new_str: str) -> dict:
         for i, line in enumerate(lines):
             if old_str.split("\n")[0] in line:
                 start = max(0, i - 2)
-                end   = min(len(lines), i + len(old_lines) + 2)
+                end = min(len(lines), i + len(old_lines) + 2)
                 before_ctx = "\n".join(lines[start:end])
                 after_content = content.replace(old_str, new_str, 1)
                 after_lines = after_content.split("\n")
-                after_ctx = "\n".join(after_lines[start:end + (len(new_str.split("\n")) - len(old_lines))])
+                after_ctx = "\n".join(
+                    after_lines[
+                        start : end + (len(new_str.split("\n")) - len(old_lines))
+                    ]
+                )
                 return {"before": before_ctx, "after": after_ctx, "found": True}
         return {"before": old_str, "after": new_str, "found": False}
     except FileNotFoundError:
@@ -180,27 +193,37 @@ def propose():
         if not ai_response:
             reason = "The AI returned an empty response. Please try again."
         elif "CODE_EDITOR_MODE" in ai_response:
-            reason = ("The AI used an incorrect JSON format (CODE_EDITOR_MODE). "
-                      "Please try again with a more specific request.")
+            reason = (
+                "The AI used an incorrect JSON format (CODE_EDITOR_MODE). "
+                "Please try again with a more specific request."
+            )
         elif "{" not in ai_response:
-            reason = ("The AI responded with plain text instead of JSON. "
-                      "Try saying: 'Edit the code to change X to Y'.")
-        elif "\"action\"" in ai_response and "\"changes\"" not in ai_response:
-            reason = ("The AI produced a JSON object but used the wrong keys. "
-                      "Expected a 'changes' array. Please retry.")
+            reason = (
+                "The AI responded with plain text instead of JSON. "
+                "Try saying: 'Edit the code to change X to Y'."
+            )
+        elif '"action"' in ai_response and '"changes"' not in ai_response:
+            reason = (
+                "The AI produced a JSON object but used the wrong keys. "
+                "Expected a 'changes' array. Please retry."
+            )
         else:
             reason = "No valid JSON proposal was found in the AI response. Please retry with a clearer request."
 
         print(f"[EDITOR] Proposal extraction failed. Reason: {reason}")
         print(f"[EDITOR] Response snippet: {snippet}")
-        return jsonify({
-            "error": reason,
-            "ai_response_snippet": snippet
-        }), 400
+        return jsonify({"error": reason, "ai_response_snippet": snippet}), 400
 
     changes = proposal.get("changes", [])
     if not changes:
-        return jsonify({"error": "No changes in proposal. Please provide specific editing instructions."}), 400
+        return (
+            jsonify(
+                {
+                    "error": "No changes in proposal. Please provide specific editing instructions."
+                }
+            ),
+            400,
+        )
 
     # Enrich each change with before/after preview
     enriched = []
@@ -208,23 +231,23 @@ def propose():
         preview = {}
         if change.get("action") in ("replace", "append"):
             preview = get_file_preview(
-                change.get("file", ""),
-                change.get("old", ""),
-                change.get("new", "")
+                change.get("file", ""), change.get("old", ""), change.get("new", "")
             )
         enriched.append({**change, "preview": preview})
 
-    return jsonify({
-        "summary":  proposal.get("summary", ""),
-        "changes":  enriched,
-        "total":    len(enriched)
-    })
+    return jsonify(
+        {
+            "summary": proposal.get("summary", ""),
+            "changes": enriched,
+            "total": len(enriched),
+        }
+    )
 
 
 @editor_bp.route("/editor/apply", methods=["POST"])
 def apply():
     """Apply a list of approved changes to the codebase."""
-    data    = request.json or {}
+    data = request.json or {}
     changes = data.get("changes", [])
 
     if not changes:
@@ -233,15 +256,17 @@ def apply():
     results = []
     for change in changes:
         success, error = apply_change(change)
-        results.append({
-            "file":    change.get("file"),
-            "action":  change.get("action"),
-            "success": success,
-            "error":   error
-        })
+        results.append(
+            {
+                "file": change.get("file"),
+                "action": change.get("action"),
+                "success": success,
+                "error": error,
+            }
+        )
 
     applied = sum(1 for r in results if r["success"])
-    failed  = len(results) - applied
+    failed = len(results) - applied
 
     for r in results:
         if not r["success"]:

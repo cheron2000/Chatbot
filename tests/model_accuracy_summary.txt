@@ -1,0 +1,21 @@
+HAM10000 MODEL ACCURACY TEST SUMMARY
+================================================================================
+
+Test Date: 2026-06-18 02:44:40
+Total Samples: 2000
+Correct Predictions: 1705
+Overall Accuracy: 85.25%
+Average Inference Time: 39.2ms
+
+Per-Class Performance:
+--------------------------------------------------------------------------------
+Actinic Keratoses: 58.11% (43/74)
+Basal Cell Carcinoma: 79.44% (85/107)
+Benign Keratosis: 75.22% (170/226)
+Dermatofibroma: 46.15% (6/13)
+Melanoma: 49.16% (88/179)
+Melanocytic Nevi: 93.74% (1288/1374)
+Vascular Lesions: 92.59% (25/27)
+
+Rating: ✅ VERY GOOD
+Comment: Great performance! The model is reliable for educational purposes.

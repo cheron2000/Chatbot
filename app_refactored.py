@@ -7,73 +7,85 @@ A Flask-based AI chatbot with AWS Bedrock integration, featuring:
 - Real-time streaming responses
 - Token analytics
 """
+
 # CRITICAL: Load .env FIRST before any other imports
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from flask import Flask
-from flask_session import Session
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 import os
 
+from flask import Flask
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_session import Session
+
 from config import config
-from services.bedrock import BedrockService
-from services.streaming import StreamingService
-from routes.main import main_bp
 from routes.chat import create_chat_blueprint
 from routes.editor import editor_bp
+from routes.main import main_bp
+from services.bedrock import BedrockService
+from services.streaming import StreamingService
 
 
 def create_app():
     """Application factory pattern."""
     app = Flask(__name__)
-    
-    # ── Validate SECRET_KEY ──
+
+    # -- Validate SECRET_KEY --
     if config.secret_key == "dev-secret-change-in-prod":
         import warnings
+
         warnings.warn(
-            "⚠️  WARNING: Using default SECRET_KEY! Set SECRET_KEY environment variable in production.",
+            "!!  WARNING: Using default SECRET_KEY! Set SECRET_KEY environment variable in production.",
             RuntimeWarning,
-            stacklevel=2
+            stacklevel=2,
         )
-    
-    # ── Session config (server-side filesystem sessions) ──
+
+    # -- Session config (server-side filesystem sessions) --
     app.config["SECRET_KEY"] = config.secret_key
     app.config["SESSION_TYPE"] = config.session_type
     app.config["SESSION_FILE_DIR"] = os.path.join(
-        os.path.dirname(__file__), 
-        config.session_file_dir
+        os.path.dirname(__file__), config.session_file_dir
     )
     app.config["SESSION_PERMANENT"] = config.session_permanent
     Session(app)
-    
-    # ── Rate limiter (in-memory, per IP) ──
+
+    # -- Rate limiter (per IP) --
+    # Use an external storage backend in production, otherwise memory:// is fine for dev.
+    rate_limit_storage = os.environ.get("RATE_LIMIT_STORAGE_URI", "memory://")
     limiter = Limiter(
         get_remote_address,
         app=app,
         default_limits=[config.rate_limit.default_limit],
-        storage_uri="memory://"
+        storage_uri=rate_limit_storage,
     )
-    
-    # ── Initialize services ──
+
+    # -- Initialize services --
     bedrock_service = BedrockService(config.bedrock)
     streaming_service = StreamingService(
-        bedrock_service,
-        config.bedrock.models,
-        config.max_tokens
+        bedrock_service, config.bedrock.models, config.max_tokens
     )
     
-    # ── Initialize vector memory ──
+    # -- Initialize classifier service (singleton) --
+    from services.skin_classifier import SkinClassifierService
+    classifier_service = SkinClassifierService(
+        model_path=config.classifier.model_path,
+        device=config.classifier.device
+    )
+    print(f"[CLASSIFIER] Initialized classifier service (model path: {config.classifier.model_path})")
+
+    # -- Initialize vector memory --
     vector_memory = None
     if config.memory.enable_vector_memory:
         from models.vector_memory import VectorMemory
+
         vector_memory = VectorMemory(persist_directory=config.memory.vector_db_dir)
         print(f"[VECTOR] Initialized vector memory at {config.memory.vector_db_dir}")
-    
-    # ── Register blueprints ──
+
+    # -- Register blueprints --
     app.register_blueprint(main_bp)
-    
+
     chat_bp = create_chat_blueprint(
         streaming_service=streaming_service,
         bedrock_client=bedrock_service.client,
@@ -86,13 +98,13 @@ def create_app():
         enable_prompt_enhancement=config.enable_prompt_enhancement,
         enable_infiltration_mode=config.enable_infiltration_mode,
         infiltration_auto_block=config.infiltration_auto_block,
-        enable_developer_mode=False  # DISABLED: Developer mode turned off
     )
 
     app.register_blueprint(chat_bp)
-    # Editor blueprint disabled along with developer mode
-    # app.register_blueprint(editor_bp)
-    
+    app.register_blueprint(
+        editor_bp
+    )  # Editor routes (/editor/propose, /apply, /restore)
+
     return app
 
 

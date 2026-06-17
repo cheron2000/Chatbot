@@ -420,7 +420,7 @@
 
     <script>
         let isStreaming = false;
-        let webSearchEnabled = false;
+        let webSearchEnabled = localStorage.getItem('webSearchEnabled') === 'true';
         let developerMode = false;
         let attachedImage = null;  // { b64, mime, dataUrl }
         let attachedFile  = null;  // { context, filename, summary }
@@ -428,6 +428,10 @@
         // Auto-clear chat history on page load (fresh conversation)
         window.addEventListener('DOMContentLoaded', function() {
             clearChatHistory();
+            // Restore web search toggle state
+            const wsBtn = document.getElementById('websearch-btn');
+            wsBtn.textContent = webSearchEnabled ? '🔍 Web Search: ON' : '🔍 Web Search: OFF';
+            wsBtn.classList.toggle('active', webSearchEnabled);
         });
 
         // Initialize developer mode status on page load
@@ -475,9 +479,16 @@
 
         function toggleWebSearch() {
             webSearchEnabled = !webSearchEnabled;
+            localStorage.setItem('webSearchEnabled', webSearchEnabled);
             const btn = document.getElementById("websearch-btn");
             btn.textContent = webSearchEnabled ? "🔍 Web Search: ON" : "🔍 Web Search: OFF";
             btn.classList.toggle("active", webSearchEnabled);
+
+            const notice = document.createElement("div");
+            notice.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#161616;border:1px solid #4caf82;color:#4caf82;padding:10px 20px;border-radius:8px;font-size:12px;z-index:999;";
+            notice.textContent = webSearchEnabled ? "🔍 Web Search ON — live results will be fetched" : "🔍 Web Search OFF";
+            document.body.appendChild(notice);
+            setTimeout(() => notice.remove(), 3000);
         }
 
         async function clearChatHistory() {
@@ -683,10 +694,10 @@
             } catch (err) {
                 aiBody.textContent = "⚠ Connection error. Please try again.";
                 console.error(err);
+            } finally {
+                btn.disabled = false;
+                isStreaming = false;
             }
-
-            btn.disabled = false;
-            isStreaming = false;
         }
         // ── EDITOR ─────────────────────────────────────────────────────────
 

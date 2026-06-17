@@ -1,0 +1,118 @@
+{
+  "akiec": {
+    "code": "akiec",
+    "name": "Actinic Keratoses and Intraepithelial Carcinoma",
+    "description": "Actinic keratoses (also called solar keratoses) are rough, scaly patches on the skin that develop from years of sun exposure. They are considered precancerous because they can develop into squamous cell carcinoma if left untreated. Intraepithelial carcinoma (also known as Bowen's disease) is an early form of skin cancer that remains in the outer layer of skin. These lesions typically appear on sun-exposed areas such as the face, ears, neck, scalp, chest, backs of hands, forearms, or lips.",
+    "severity": "pre-cancerous",
+    "prevalence": "common",
+    "risk_factors": [
+      "Prolonged sun exposure",
+      "Fair skin, light hair, and blue, green, or gray eyes",
+      "Age over 40",
+      "Living in sunny climates",
+      "History of sunburns",
+      "Weakened immune system",
+      "Certain genetic disorders"
+    ],
+    "treatment": "Treatment options include cryotherapy (freezing), topical medications (5-fluorouracil, imiquimod), photodynamic therapy, curettage, or laser therapy. Regular monitoring and sun protection are essential.",
+    "prognosis": "Excellent with treatment. Without treatment, a small percentage may progress to squamous cell carcinoma over time."
+  },
+  "bcc": {
+    "code": "bcc",
+    "name": "Basal Cell Carcinoma",
+    "description": "Basal cell carcinoma (BCC) is the most common type of skin cancer, accounting for about 80% of all skin cancer cases. It develops in the basal cells at the bottom of the epidermis (outer layer of skin). BCC typically appears as a slightly transparent bump on the skin, though it can take other forms. While BCC rarely spreads (metastasizes) to other parts of the body, it can grow deep into surrounding tissue and cause disfigurement if not treated. BCC most often occurs on areas of skin frequently exposed to the sun.",
+    "severity": "malignant",
+    "prevalence": "common",
+    "risk_factors": [
+      "Chronic sun exposure",
+      "Fair skin",
+      "Age over 50",
+      "Personal or family history of skin cancer",
+      "Radiation therapy exposure",
+      "Exposure to arsenic",
+      "Inherited syndromes (Gorlin-Goltz syndrome)"
+    ],
+    "treatment": "Treatment options include surgical excision, Mohs surgery, electrodesiccation and curettage, cryotherapy, topical medications (imiquimod, 5-fluorouracil), photodynamic therapy, or radiation therapy for inoperable cases.",
+    "prognosis": "Excellent with early detection and treatment. Cure rate is over 95% with appropriate treatment. Recurrence is possible, especially with incomplete removal."
+  },
+  "bkl": {
+    "code": "bkl",
+    "name": "Benign Keratosis-like Lesions",
+    "description": "Benign keratosis-like lesions include seborrheic keratoses, solar lentigo (liver spots), and lichen planus-like keratoses. Seborrheic keratoses are common noncancerous (benign) skin growths that appear as wart-like spots on the skin. They are typically brown, black, or tan and have a waxy, scaly, slightly elevated appearance. Despite their appearance, they are harmless and do not become cancerous. Solar lentigines are flat, brown spots caused by sun exposure, commonly called 'age spots' or 'liver spots'. These lesions are entirely benign and do not require treatment unless for cosmetic reasons.",
+    "severity": "benign",
+    "prevalence": "common",
+    "risk_factors": [
+      "Age (more common after age 50)",
+      "Genetics (tends to run in families)",
+      "Sun exposure (for solar lentigines)",
+      "Fair skin"
+    ],
+    "treatment": "Treatment is usually not necessary as these are benign lesions. If removal is desired for cosmetic reasons or if the lesion becomes irritated, options include cryotherapy, curettage, electrosurgery, or laser therapy.",
+    "prognosis": "Excellent. These lesions are benign and do not become cancerous. They may increase in number with age but pose no health risk."
+  },
+  "df": {
+    "code": "df",
+    "name": "Dermatofibroma",
+    "description": "Dermatofibroma is a common benign fibrous nodule that usually appears on the legs but can occur anywhere on the body. These small, firm nodules typically range in color from pink to brown and feel like a hard lump under the skin. They are thought to develop in response to minor trauma, such as an insect bite or ingrown hair, but the exact cause is unknown. Dermatofibromas are more common in adults and occur more frequently in women than men. The lesions are harmless and typically do not require treatment unless they become bothersome.",
+    "severity": "benign",
+    "prevalence": "common",
+    "risk_factors": [
+      "Minor skin trauma or injury",
+      "Insect bites",
+      "Adult age (rare in children)",
+      "Female gender (more common in women)"
+    ],
+    "treatment": "Treatment is usually not necessary as these are benign lesions. If removal is desired due to discomfort or cosmetic concerns, options include surgical excision, cryotherapy, or laser treatment. Note that simple removal may leave a scar.",
+    "prognosis": "Excellent. Dermatofibromas are benign and do not become cancerous. They may persist indefinitely but are harmless. Rarely, they may spontaneously resolve."
+  },
+  "mel": {
+    "code": "mel",
+    "name": "Melanoma",
+    "description": "Melanoma is the most serious and dangerous type of skin cancer. It develops in the melanocytes (pigment-producing cells) and can spread rapidly to other organs if not detected and treated early. Melanoma can develop from an existing mole or appear as a new dark spot on the skin. Warning signs include changes in size, shape, or color of a mole, as well as asymmetry, irregular borders, multiple colors, and diameter larger than 6mm (the 'ABCDE' criteria). Early detection is crucial, as melanoma is highly curable when caught early but can be life-threatening if it spreads beyond the skin.",
+    "severity": "malignant",
+    "prevalence": "uncommon",
+    "risk_factors": [
+      "Excessive UV radiation exposure (sun or tanning beds)",
+      "History of sunburns, especially in childhood",
+      "Fair skin, light hair, and light eyes",
+      "Multiple moles or atypical moles",
+      "Family history of melanoma",
+      "Personal history of melanoma or other skin cancers",
+      "Weakened immune system",
+      "Age over 50 (though can occur at any age)"
+    ],
+    "treatment": "Primary treatment is surgical excision with wide margins. Advanced cases may require lymph node removal, immunotherapy, targeted therapy, chemotherapy, or radiation therapy. Early-stage melanomas have excellent cure rates with surgery alone.",
+    "prognosis": "Highly dependent on stage at diagnosis. Early-stage (in situ or thin melanomas) have >95% 5-year survival rate. Advanced melanomas with metastasis have significantly lower survival rates. Early detection and treatment are critical."
+  },
+  "nv": {
+    "code": "nv",
+    "name": "Melanocytic Nevi (Moles)",
+    "description": "Melanocytic nevi, commonly known as moles, are benign proliferations of melanocytes (pigment-producing cells). They are extremely common, with most adults having between 10 to 40 moles. Moles typically appear as small, dark brown spots caused by clusters of pigmented cells. They can be flat or raised, smooth or rough, and may have hair growing from them. Most moles are harmless and require no treatment. However, some moles can develop into melanoma, so it's important to monitor them for changes using the ABCDE criteria (Asymmetry, Border irregularity, Color variation, Diameter >6mm, Evolution/changing).",
+    "severity": "benign",
+    "prevalence": "common",
+    "risk_factors": [
+      "Genetics (hereditary factors)",
+      "Sun exposure (can increase number of moles)",
+      "Fair skin",
+      "Immunosuppression"
+    ],
+    "treatment": "Usually no treatment is needed. Removal may be considered if a mole shows signs of change, for cosmetic reasons, or if it's in a location prone to irritation. Removal methods include surgical excision, shave excision, or laser treatment.",
+    "prognosis": "Excellent. Most moles remain benign throughout life. The risk of any individual mole becoming melanoma is very low. Regular skin self-examinations and professional skin checks help detect any concerning changes early."
+  },
+  "vasc": {
+    "code": "vasc",
+    "name": "Vascular Lesions",
+    "description": "Vascular lesions are skin abnormalities related to blood vessels. This category includes various benign conditions such as angiomas (cherry angiomas), angiokeratomas, pyogenic granulomas, and hemorrhage-related changes. Cherry angiomas are small, bright red papules that are very common and harmless. Angiokeratomas are dark red to purple papules that can occur anywhere on the body. Pyogenic granulomas are rapidly growing vascular lesions that can bleed easily. Most vascular lesions are benign and pose no health risk, though some may bleed or become irritated if traumatized.",
+    "severity": "benign",
+    "prevalence": "common",
+    "risk_factors": [
+      "Age (cherry angiomas increase with age)",
+      "Genetics",
+      "Pregnancy (can trigger development)",
+      "Certain medications",
+      "Trauma (for pyogenic granulomas)"
+    ],
+    "treatment": "Many vascular lesions require no treatment. If removal is desired for cosmetic reasons, bleeding, or discomfort, options include laser therapy, electrocautery, cryotherapy, or surgical excision.",
+    "prognosis": "Excellent. These lesions are benign and do not become cancerous. Some may persist or increase in number over time but remain harmless."
+  }
+}

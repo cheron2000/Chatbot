@@ -28,6 +28,9 @@ wheels/
 instance/
 .webassets-cache
 
+# User data
+user_profiles/
+
 # Environment
 .env
 .venv
@@ -47,6 +50,20 @@ infiltration_results_*.json
 infiltration_results_*.csv
 infiltration_results_*.html
 comparison_*.json
+
+# Dataset images (exclude large image files)
+datasets/dataset/HAM10000_images_part_1/*.jpg
+datasets/dataset/HAM10000_images_part_2/*.jpg
+datasets/dataset/*.zip
+datasets/data/ham10000/*.jpg
+
+# Model checkpoint (large file - download separately)
+best_efficientnet_ham10000.pth
+
+# Keep these dataset files
+!datasets/dataset/HAM10000_metadata.tab
+!datasets/train_efficientnet.py
+!datasets/requirements.txt
 
 # Legacy files (should be deleted)
 app.py
