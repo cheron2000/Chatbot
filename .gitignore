@@ -57,8 +57,12 @@ datasets/dataset/HAM10000_images_part_2/*.jpg
 datasets/dataset/*.zip
 datasets/data/ham10000/*.jpg
 
-# Model checkpoint (large file - download separately)
-best_efficientnet_ham10000.pth
+# Dataset virtual environments (large, not needed)
+datasets/.venv/
+datasets/.venv-1/
+
+# Model checkpoint is included in repo (~15.6 MB, within GitHub limits)
+# best_efficientnet_ham10000.pth
 
 # Keep these dataset files
 !datasets/dataset/HAM10000_metadata.tab
