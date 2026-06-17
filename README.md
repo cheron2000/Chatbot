@@ -1,4 +1,4 @@
-# ORACLE AI Chat with Skin Lesion Classifier
+# AI Chat with Skin Lesion Classifier
 
 A Flask-based AI chatbot with AWS Bedrock integration, featuring dual memory system, model fallback, real-time streaming responses, and **AI-powered skin lesion classification**.
 
